@@ -113,11 +113,21 @@ class Agent():
   def copy_weights(self, agent_to_copy: 'Agent') -> None:
     self.__model.load_state_dict(agent_to_copy.model.state_dict())
 
-  def add_experience(self, prev_state: np.ndarray, action: int,
+  def add_experience(self, target_agent: 'Agent', prev_state: np.ndarray, action: int,
                      reward: int, curr_state: np.ndarray, done: bool) -> None:
-    self.replay_memory.push(prev_state, action, reward, curr_state, done)
 
-  def train(self, target_agent: 'Agent') -> Tuple[float, float]:
+    predict_val = self.predict(prev_state).cpu().detach().data[0][action]
+    target_val = target_agent.predict(curr_state).cpu().detach().data
+    if done:
+      target_val = reward
+    else:
+      target_val = reward + self.discount_factor * torch.max(target_val)
+
+    abs_err = abs(predict_val - target_val)
+    self.replay_memory.push(abs_err, prev_state, action,
+                            reward, curr_state, done)
+
+  def train(self, target_agent: 'Agent') -> Tuple[float, float, float]:
     """
       Train on a single game. Only train if our replay memory has enough saved memory, 
       which should be >= batch size.
@@ -132,10 +142,13 @@ class Agent():
     """
     # only start training process when we have enough experiences in the replay
     if len(self.replay_memory) < self.batch_size:
-      return 0.00, 0.00
+      return 0.00, 0.00, 0.00
 
     # sample random batch from replay memory
-    minibatch = self.replay_memory.sample(self.batch_size)
+    (minibatch,
+     minibatch_indices,
+     minibatch_IS_weight) = self.replay_memory.sample(self.batch_size)
+
     prev_states = np.vstack([x.prev_state for x in minibatch])
     actions = torch.LongTensor(
         np.array([x.action for x in minibatch]).reshape(-1, 1)).to(self.device)
@@ -157,11 +170,18 @@ class Agent():
     q_target = (rewards + self.discount_factor *
                 q_curr_state_values * mask).to(self.device)
 
+    # get the absolute error between predict and target
+    # and update our replay memory
+    errors = torch.abs(q_predict - q_target).cpu().data.numpy()
+    for i in range(self.batch_size):
+      self.replay_memory.update(minibatch_indices[i], errors[i])
+
     # train our network based on the results from its
     # q_predict to expected values given by our target network (q_target)
     self.__model.train(mode=True)
     self.optimizer.zero_grad()
-    loss = self.loss_function(q_predict, q_target)
+    loss = (torch.FloatTensor(minibatch_IS_weight).to(self.device)
+            * self.loss_function(q_predict, q_target)).mean()
     loss.backward()
 
     # gradient clipping (use if you want)
@@ -174,4 +194,5 @@ class Agent():
     # return them so we can analyze later
     float_loss = np.mean(loss.cpu().detach().numpy()).item()
     float_q_target = np.mean(q_target.cpu().detach().numpy()).item()
-    return float_loss, float_q_target
+    float_err = np.mean(errors).item()
+    return float_loss, float_q_target, float_err

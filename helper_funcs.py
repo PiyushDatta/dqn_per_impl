@@ -21,9 +21,10 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
     Record and plot data on matplotlib and also save the figues/numbers.
   """
   total_rewards = 0
-  total_loss = 0
   total_steps = 0
+  total_loss = 0
   total_bellman_eq = 0
+  total_errs = 0
   avg_reward = deque(maxlen=100)
   progress_bar = tqdm(total=total_episodes)
   plotting_data = {
@@ -32,6 +33,7 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
       'epsilon': np.empty(total_episodes),
       'loss': np.empty(total_episodes),
       'bellman_eq': np.empty(total_episodes),
+      'errors': np.empty(total_episodes),
       'learning_rate': np.empty(total_episodes),
   }
 
@@ -42,12 +44,14 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
                                             epsilon_decay=epsilon_decay)
 
     # train game/episode, save weights, decay learning rate
-    total_rewards, total_loss, total_steps, total_bellman_eq = train_single_game(env=env,
-                                                                                 train_agent=train_agent,
-                                                                                 target_agent=target_agent,
-                                                                                 epsilon=episode_epsilon,
-                                                                                 copy_max_count=copy_max_count,
-                                                                                 total_steps=total_steps)
+    (total_rewards, total_steps,
+     total_loss, total_bellman_eq,
+     total_errs) = train_single_game(env=env,
+                                     train_agent=train_agent,
+                                     target_agent=target_agent,
+                                     epsilon=episode_epsilon,
+                                     copy_max_count=copy_max_count,
+                                     total_steps=total_steps)
     train_agent.decay_learning_rate()
     train_agent.save_weights()
 
@@ -59,6 +63,7 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
     plotting_data['epsilon'][episode] = episode_epsilon
     plotting_data['loss'][episode] = total_loss
     plotting_data['bellman_eq'][episode] = total_bellman_eq
+    plotting_data['errors'][episode] = total_errs
     plotting_data['learning_rate'][episode] = train_agent.get_last_lr()
 
     # update progress bar
@@ -71,15 +76,15 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
       })
 
   env.close()
-  save_results(plotting_data=plotting_data, progress_bar=progress_bar,
-               name=saved_results_name, directory_name=saved_results_path,
-               hyperparams_dict=hyperparams_dict)
+  # save_results(plotting_data=plotting_data, progress_bar=progress_bar,
+  #              name=saved_results_name, directory_name=saved_results_path,
+  #              hyperparams_dict=hyperparams_dict)
 
 
 def train_single_game(env: gym.envs.classic_control.CartPoleEnv,
                       train_agent: Agent, target_agent: Agent,
                       epsilon: float, copy_max_count: int,
-                      total_steps: int) -> Tuple[int, int, int, float]:
+                      total_steps: int) -> Tuple[int, int, float, float, float]:
   """
     Train the agent on one game/episode.
     Update target agent model weights to the same as train agent's after some number of steps.
@@ -93,6 +98,7 @@ def train_single_game(env: gym.envs.classic_control.CartPoleEnv,
   total_loss = 0
   avg_bellman_eq = 0
   total_bellman_eq = 0
+  total_errs = 0
   reward, game_done = None, False
 
   while not game_done:
@@ -107,10 +113,10 @@ def train_single_game(env: gym.envs.classic_control.CartPoleEnv,
       reward -= 1
 
     # Add the observations we got from the environment
-    train_agent.add_experience(prev_observation, action, reward,
+    train_agent.add_experience(target_agent, prev_observation, action, reward,
                                observation, game_done)
     # Get the loss and bellman equation values from training
-    total_loss, avg_bellman_eq = train_agent.train(target_agent)
+    total_loss, avg_bellman_eq, total_errs = train_agent.train(target_agent)
     total_bellman_eq = avg_bellman_eq if avg_bellman_eq > 0 else total_bellman_eq
     # adjust prev state to curr state for next iteration
     prev_observation = observation
@@ -119,7 +125,7 @@ def train_single_game(env: gym.envs.classic_control.CartPoleEnv,
     if total_steps % copy_max_count == 0:
       target_agent.copy_weights(train_agent)
 
-  return total_rewards, total_loss, total_steps, total_bellman_eq
+  return total_rewards, total_steps, total_loss, total_bellman_eq, total_errs
 
 
 def save_results(plotting_data: Dict[str, np.ndarray], progress_bar: tqdm,
