@@ -76,9 +76,9 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
       })
 
   env.close()
-  # save_results(plotting_data=plotting_data, progress_bar=progress_bar,
-  #              name=saved_results_name, directory_name=saved_results_path,
-  #              hyperparams_dict=hyperparams_dict)
+  save_results(plotting_data=plotting_data, progress_bar=progress_bar,
+               name=saved_results_name, directory_name=saved_results_path,
+               hyperparams_dict=hyperparams_dict)
 
 
 def train_single_game(env: gym.envs.classic_control.CartPoleEnv,
