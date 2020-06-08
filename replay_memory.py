@@ -129,20 +129,18 @@ class Sumtree(object):
       get the leaf index, priority value of that leaf, and experience associated with that index
     """
     parent_idx = 0
+    left_child_idx = 2 * parent_idx + 1
 
-    while True:
+    while left_child_idx < len(self.tree):
       left_child_idx = 2 * parent_idx + 1
       right_child_idx = left_child_idx + 1
 
-      if left_child_idx >= len(self.tree):
-        break
+      # downward search, always search for a higher priority node
+      if value < self.tree[left_child_idx]:
+        parent_idx = left_child_idx
       else:
-        # downward search, always search for a higher priority node
-        if value < self.tree[left_child_idx]:
-          parent_idx = left_child_idx
-        else:
-          value -= self.tree[left_child_idx]
-          parent_idx = right_child_idx
+        value -= self.tree[left_child_idx]
+        parent_idx = right_child_idx
 
     data_idx = parent_idx - self.capacity + 1
     return parent_idx, self.tree[parent_idx], self.data[data_idx]
