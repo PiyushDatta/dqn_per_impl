@@ -3,7 +3,7 @@ import os
 curr_try = 1
 hyperparams_dict = {
     # total eps, printing, and memory
-    'total_episodes':  50,
+    'total_episodes':  500,
     'replay_memory_cap': 50000,
     'progress_per_iteration': 10,
 
