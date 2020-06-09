@@ -14,7 +14,7 @@ hyperparams_dict = {
 
     # epsilon
     'epsilon': 1.0,
-    'max_epsilon_episodes': 100,
+    'max_epsilon_episodes': 50,
     'min_epsilon': 0.01,
     'epsilon_decay': 0.00,
     # 'epsilon_decay': 0.995,
@@ -22,8 +22,8 @@ hyperparams_dict = {
     # other factors
     'discount_factor': 0.99,
     'batch_size': 32,
-    'copy_max_step': 15,
-    'hidden_layer_size': 24,
+    'copy_max_step': 25,
+    'hidden_layer_size': 48,
 
     # weights save path
     'checkpoint_path': os.path.join(os.path.join(os.getcwd(), 'nn_saved_weights'), 'training_%s.pth' % curr_try),

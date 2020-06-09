@@ -27,6 +27,8 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
   total_errs = 0.0
   avg_reward = deque(maxlen=100)
   progress_bar = tqdm(total=total_episodes)
+  solved_game = False
+
   plotting_data = {
       'avg_rewards[last_%s]' % avg_reward.maxlen: np.empty(total_episodes),
       'total_rewards': np.empty(total_episodes),
@@ -74,6 +76,10 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
           'avg reward (last %s)' % avg_reward.maxlen: np.mean(avg_reward),
           'epsilon': episode_epsilon,
       })
+
+    if not solved_game and np.mean(avg_reward) >= 195:
+      solved_game = True
+      print("Solved in %s games/episodes" % (episode+1))
 
   env.close()
   save_results(plotting_data=plotting_data, progress_bar=progress_bar,
