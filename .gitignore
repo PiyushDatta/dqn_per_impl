@@ -7,3 +7,4 @@
 /.venv/
 /nn_saved_weights/
 /saved_results/
+/.mypy_cache/

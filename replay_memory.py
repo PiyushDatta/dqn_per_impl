@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from collections import namedtuple
-from typing import List, Tuple
+from typing import List, Tuple, NamedTuple
 
 
 class ReplayMemory(object):
@@ -27,23 +27,28 @@ class ReplayMemory(object):
   def __len__(self) -> int:
     return self.sum_tree.n_entries
 
-  def _get_priority(self, abs_err: np.float) -> np.float:
-    # If the max priority = 0 we can't put priority = 0 since
-    # this exp will never have a chance to be selected
-    # so we use a minimum priority
+  def _get_priority(self, abs_err: np.float) -> float:
     abs_errs = np.abs(abs_err) + self.err
-    clipped_errors = np.minimum(abs_errs, self.absolute_error_upper)
+    clipped_errors = np.minimum(abs_errs, self.absolute_error_upper).item()
     return clipped_errors ** self.alpha
 
   def update(self, tree_idx: int, abs_err: np.float) -> None:
     priority = self._get_priority(abs_err=abs_err)
     self.sum_tree.update(tree_idx=tree_idx, priority=priority)
 
-  def push(self, abs_err: np.float, prev_state: np.ndarray, action: int,
+  def push(self, prev_state: np.ndarray, action: int,
            reward: int, curr_state: np.ndarray, done: bool) -> None:
+    # Find the max priority (from the leaves)
+    max_priority = np.max(self.sum_tree.tree[-self.sum_tree.capacity:]).item()
+
+    # if the max priority = 0 we can't put priority = 0
+    # since this exp will never have a chance to be selected
+    # so we use a minimum priority
+    if max_priority == 0:
+      max_priority = self.absolute_error_upper
+
     new_exp = self.transition(prev_state, action, reward, curr_state, done)
-    priority = self._get_priority(abs_err=abs_err)
-    self.sum_tree.add(priority, new_exp)
+    self.sum_tree.add(max_priority, new_exp)
 
   def sample(self, batch_size: int) -> Tuple[List, List, List]:
     """
@@ -94,7 +99,7 @@ class Sumtree(object):
     # contains the experiences (so the size of data is capacity)
     self.data = np.zeros(capacity, dtype=object)
 
-  def add(self, priority: int, new_data: namedtuple) -> None:
+  def add(self, priority: int, new_data: NamedTuple) -> None:
     """
       store the priority and experience
     """
@@ -110,7 +115,7 @@ class Sumtree(object):
     if self.n_entries < self.capacity:
       self.n_entries += 1
 
-  def update(self, tree_idx: int, priority: int) -> None:
+  def update(self, tree_idx: int, priority: float) -> None:
     """
       update the priority
     """
@@ -124,23 +129,24 @@ class Sumtree(object):
       if tree_idx == 0:
         break
 
-  def get(self, value: int) -> Tuple[int, int, int]:
+  def get(self, value: float) -> Tuple[int, int, int]:
     """
       get the leaf index, priority value of that leaf, and experience associated with that index
     """
     parent_idx = 0
     left_child_idx = 2 * parent_idx + 1
+    right_child_idx = left_child_idx + 1
 
     while left_child_idx < len(self.tree):
-      left_child_idx = 2 * parent_idx + 1
-      right_child_idx = left_child_idx + 1
-
       # downward search, always search for a higher priority node
       if value < self.tree[left_child_idx]:
         parent_idx = left_child_idx
       else:
         value -= self.tree[left_child_idx]
         parent_idx = right_child_idx
+
+      left_child_idx = 2 * parent_idx + 1
+      right_child_idx = left_child_idx + 1
 
     data_idx = parent_idx - self.capacity + 1
     return parent_idx, self.tree[parent_idx], self.data[data_idx]

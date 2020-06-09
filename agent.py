@@ -99,7 +99,7 @@ class Agent():
       print("Could not save weights to: " + str(self.checkpoint_path))
       print("ERROR: %s" % e)
 
-  def load_weights(self, name: str = None) -> None:
+  def load_weights(self, name: str = '') -> None:
     try:
       self.__model.load_state_dict(torch.load(self.checkpoint_path))
       if self.debug:
@@ -113,19 +113,9 @@ class Agent():
   def copy_weights(self, agent_to_copy: 'Agent') -> None:
     self.__model.load_state_dict(agent_to_copy.model.state_dict())
 
-  def add_experience(self, target_agent: 'Agent', prev_state: np.ndarray, action: int,
+  def add_experience(self, prev_state: np.ndarray, action: int,
                      reward: int, curr_state: np.ndarray, done: bool) -> None:
-
-    predict_val = self.predict(prev_state).cpu().detach().data[0][action]
-    target_val = target_agent.predict(curr_state).cpu().detach().data
-    if done:
-      target_val = reward
-    else:
-      target_val = reward + self.discount_factor * torch.max(target_val)
-
-    abs_err = abs(predict_val - target_val)
-    self.replay_memory.push(abs_err, prev_state, action,
-                            reward, curr_state, done)
+    self.replay_memory.push(prev_state, action, reward, curr_state, done)
 
   def train(self, target_agent: 'Agent') -> Tuple[float, float, float]:
     """

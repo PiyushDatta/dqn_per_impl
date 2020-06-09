@@ -22,9 +22,9 @@ def train_agent(env: gym.envs.classic_control.CartPoleEnv, train_agent: Agent, t
   """
   total_rewards = 0
   total_steps = 0
-  total_loss = 0
-  total_bellman_eq = 0
-  total_errs = 0
+  total_loss = 0.0
+  total_bellman_eq = 0.0
+  total_errs = 0.0
   avg_reward = deque(maxlen=100)
   progress_bar = tqdm(total=total_episodes)
   plotting_data = {
@@ -113,7 +113,7 @@ def train_single_game(env: gym.envs.classic_control.CartPoleEnv,
       reward -= 1
 
     # Add the observations we got from the environment
-    train_agent.add_experience(target_agent, prev_observation, action, reward,
+    train_agent.add_experience(prev_observation, action, reward,
                                observation, game_done)
     # Get the loss and bellman equation values from training
     total_loss, avg_bellman_eq, total_errs = train_agent.train(target_agent)
