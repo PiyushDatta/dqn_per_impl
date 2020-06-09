@@ -1,9 +1,9 @@
 import os
-
+# solved in 129
 curr_try = 1
 hyperparams_dict = {
     # total eps, printing, and memory
-    'total_episodes':  500,
+    'total_episodes':  1000,
     'replay_memory_cap': 50000,
     'progress_per_iteration': 10,
 
@@ -22,7 +22,7 @@ hyperparams_dict = {
     # other factors
     'discount_factor': 0.99,
     'batch_size': 32,
-    'copy_max_step': 25,
+    'copy_max_step': 20,
     'hidden_layer_size': 48,
 
     # weights save path

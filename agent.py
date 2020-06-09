@@ -101,7 +101,8 @@ class Agent():
 
   def load_weights(self, name: str = '') -> None:
     try:
-      self.__model.load_state_dict(torch.load(self.checkpoint_path))
+      self.__model.load_state_dict(torch.load(
+          self.checkpoint_path, map_location=torch.device(self.device)))
       if self.debug:
         print("Loaded weights for " + name +
               ", from: " + str(self.checkpoint_path))
